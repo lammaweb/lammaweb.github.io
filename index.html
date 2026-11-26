@@ -112,7 +112,7 @@ footer{border-top:1px solid var(--line);padding:18px;text-align:center;color:var
 <div class="card"><div id="sEmpty" style="text-align:center;color:var(--muted);padding:30px 8px">اختر نشاطاً من القائمة للمعاينة والاعتماد.</div>
 <div id="sEd" style="display:none"><div class="row" style="justify-content:space-between;margin-bottom:10px"><h3 id="eT" style="margin:0"></h3><span class="pill pw" id="eB"></span></div>
 <label class="f"><span>رابط الصفحة</span><input id="eUrl" dir="ltr"></label><label class="f"><span>ملاحظة للعميل</span><input id="eNote"></label>
-<div class="row" style="margin-bottom:14px"><button class="btn okb sm" data-act="approve">اعتماد ونشر</button><button class="btn ghost sm" data-act="unpub">إلغاء النشر</button><button class="btn sec sm" data-act="expHtml">تصدير HTML</button><button class="btn sec sm" data-act="expQr">تصدير QR</button></div>
+<div class="row" style="margin-bottom:14px"><button class="btn okb sm" data-act="approve">اعتماد ونشر</button><button class="btn ghost sm" data-act="unpub">إلغاء النشر</button><button class="btn sec sm" data-act="expHtml">تصدير HTML</button><button class="btn sec sm" data-act="expQr">تصدير QR</button><button class="btn sec sm" data-act="openPv">فتح المعاينة</button></div>
 <div class="frame"><iframe class="pv" id="pv" title="معاينة" sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox" allow="clipboard-write"></iframe></div></div></div></div></div>
 </div></section>
 
@@ -251,7 +251,7 @@ document.addEventListener('click',e=>{const a=e.target.closest('[data-act]');if(
  logout:()=>signOut(auth),
  copyUrl:()=>{try{navigator.clipboard.writeText($('cUrl').value);toast('تم نسخ الرابط')}catch(x){toast('انسخ الرابط يدوياً')}},
  dlClientQr:()=>{if(mine)qrPng(mine.publishedUrl,mine.n,mine.color,'qr-'+mine.username+'.png')},
- approve:approve,unpub:unpub,expHtml:expHtml,expQr:()=>{const r=cur();if(r)qrPng(eUrl(r),r.n,r.color,'qr-'+r.username+'.png')}
+ openPv:()=>{if(pvUrl)window.open(pvUrl,'_blank')},approve:approve,unpub:unpub,expHtml:expHtml,expQr:()=>{const r=cur();if(r)qrPng(eUrl(r),r.n,r.color,'qr-'+r.username+'.png')}
  }[a.dataset.act]||(()=>{}))()});
 function renderClient(){
  const on=session.role==='client';$('cAuth').style.display=on?'none':'block';$('cPanel').style.display=on&&mine?'block':'none';$('cBar').style.display=on?'flex':'none';
@@ -283,7 +283,9 @@ function fillEd(reset){const r=cur();if(!r)return;$('sEmpty').style.display='non
  const b=badge(r),bb=$('eB');bb.textContent=b[0];bb.className='pill '+b[1];
  if(reset){$('eUrl').value=r.publishedUrl||location.origin+location.pathname+'?c='+encodeURIComponent(r.username);$('eNote').value=r.adminNote||''}
  prevSet(r)}
-function prevSet(r){try{$('pv').srcdoc=pageHTML(r,eUrl(r))}catch(e){$('pv').srcdoc='<p dir="rtl" style="font-family:sans-serif;padding:20px">تعذر عرض المعاينة: '+esc(e.message)+'</p>'}}
+let pvUrl=null;
+function prevSet(r){let h;try{h=pageHTML(r,eUrl(r))}catch(e){h='<p dir="rtl" style="font-family:sans-serif;padding:20px">تعذر عرض المعاينة: '+esc(e.message)+'</p>'}
+ try{if(pvUrl)URL.revokeObjectURL(pvUrl);pvUrl=URL.createObjectURL(new Blob([h],{type:'text/html;charset=utf-8'}));$('pv').removeAttribute('srcdoc');$('pv').src=pvUrl}catch(e){$('pv').srcdoc=h}}
 $('eUrl').addEventListener('change',()=>{const r=cur();if(r)prevSet(r)});
 $('sForm').addEventListener('submit',async e=>{e.preventDefault();try{await signInWithEmailAndPassword(auth,$('sMail').value.trim(),$('sPass').value)}catch(err){toast(errMsg(err.code))}});
 async function approve(){const r=cur();if(!r)return;const url=safe(eUrl(r));if(!url){toast('الرابط غير صالح');return}
