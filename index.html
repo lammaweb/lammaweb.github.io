@@ -158,6 +158,7 @@ const intl=v=>{let d=digits(v);if(d.startsWith('00'))d=d.slice(2);else if(d.star
 const safe=v=>{v=String(v||'').trim();if(!v)return'';if(/^https?:\/\//i.test(v))return v;if(/^[a-z][a-z0-9+.\-]*:/i.test(v))return'';return 'https://'+v};
 function lk(k,v){v=String(v||'').trim();if(!v)return'';if(/[.\/]/.test(v))return safe(v);const h=encodeURIComponent(v.replace(/^@/,''));return k==='fb'?'https://facebook.com/'+h:k==='ig'?'https://instagram.com/'+h:k==='tt'?'https://tiktok.com/@'+h:safe(v)}
 function pageHTML(D,url){
+ D=Object.assign({},D);KEYS.forEach(k=>{if(k!=='cod')D[k]=D[k]==null?'':String(D[k])});
  const e=esc,col=/^#[0-9a-f]{6}$/i.test(D.color)?D.color:'#8b63d0',nm=e(D.n||'اسم النشاط'),w=intl(D.wa||D.ph),ph=digits(D.ph||D.wa);
  let soc='';[['فيسبوك','f','#1877f2',lk('fb',D.fb)],['إنستجرام','ig','#c13584',lk('ig',D.ig)],['تيك توك','tt','#161616',lk('tt',D.tt)],['الموقع الإلكتروني','www','#4b5563',lk('web',D.web)]].forEach(s=>{if(s[3])soc+='<a class="row" href="'+e(s[3])+'" target="_blank" rel="noopener"><span class="ic" style="background:'+s[2]+'">'+s[1]+'</span><b>'+s[0]+'</b><span class="end">زيارة</span></a>'});
  let pay='';[['فودافون كاش','V','#e60000',D.vc],['إنستا باي','IP','#6a2c91',D.ip]].forEach(p=>{if(p[3])pay+='<button class="row" data-v="'+e(p[3])+'" onclick="cp(this.dataset.v)"><span class="ic" style="background:'+p[2]+'">'+p[1]+'</span><span><b>'+p[0]+'</b><small>'+e(p[3])+'</small></span><span class="end">نسخ</span></button>'});
@@ -273,8 +274,9 @@ $('sList').addEventListener('click',e=>{const it=e.target.closest('.it');if(!it)
 function fillEd(reset){const r=cur();if(!r)return;$('sEmpty').style.display='none';$('sEd').style.display='block';$('eT').textContent=r.n||r.username;
  const b=badge(r),bb=$('eB');bb.textContent=b[0];bb.className='pill '+b[1];
  if(reset){$('eUrl').value=r.publishedUrl||location.origin+location.pathname+'?c='+encodeURIComponent(r.username);$('eNote').value=r.adminNote||''}
- $('pv').srcdoc=pageHTML(r,eUrl(r))}
-$('eUrl').addEventListener('change',()=>{const r=cur();if(r)$('pv').srcdoc=pageHTML(r,eUrl(r))});
+ prevSet(r)}
+function prevSet(r){try{$('pv').srcdoc=pageHTML(r,eUrl(r))}catch(e){$('pv').srcdoc='<p dir="rtl" style="font-family:sans-serif;padding:20px">تعذر عرض المعاينة: '+esc(e.message)+'</p>'}}
+$('eUrl').addEventListener('change',()=>{const r=cur();if(r)prevSet(r)});
 $('sForm').addEventListener('submit',async e=>{e.preventDefault();try{await signInWithEmailAndPassword(auth,$('sMail').value.trim(),$('sPass').value)}catch(err){toast(errMsg(err.code))}});
 async function approve(){const r=cur();if(!r)return;const url=safe(eUrl(r));if(!url){toast('الرابط غير صالح');return}
  const pub={};KEYS.forEach(k=>pub[k]=r[k]==null?(k==='cod'?false:''):r[k]);pub.updatedAt=new Date().toISOString();
