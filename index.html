@@ -97,7 +97,9 @@ onAuthStateChanged(auth,user=>{
 /* ---------- العميل ---------- */
 document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{mode=b.dataset.mode;const r=mode==='register';$('sgL').classList.toggle('on',!r);$('sgR').classList.toggle('on',r);$('aNameW').style.display=r?'block':'none';$('aBtn').textContent=r?'إنشاء الحساب':'دخول'});
 $('authForm').addEventListener('submit',async e=>{e.preventDefault();
- const slug=slugOf($('aUser').value),pass=$('aPass').value;if(slug.length<3){toast('اسم المستخدم 3 أحرف على الأقل');return}
+ const raw=$('aUser').value.trim().toLowerCase(),slug=slugOf(raw),pass=$('aPass').value;
+ if(mode==='register'&&(!/^[a-z0-9][a-z0-9_.-]{2,39}$/.test(raw)||/^__.*__$/.test(raw))){toast('اسم المستخدم: حروف إنجليزية وأرقام فقط (3 على الأقل) وبدون مسافات');return}
+ if(slug.length<3){toast('اسم المستخدم 3 أحرف على الأقل');return}
  $('aBtn').disabled=true;
  try{if(mode==='register'){const cr=await createUserWithEmailAndPassword(auth,slug+DOMAIN,pass);const now=new Date().toISOString();
    await setDoc(doc(db,'businesses',cr.user.uid),{username:slug,n:$('aName').value.trim()||slug,status:'pending',adminNote:'',publishedUrl:'',createdAt:now,updatedAt:now,changed:false});okAnim('تم إنشاء حسابك')}
@@ -127,7 +129,7 @@ async function clientPreview(d){const ap=d.status==='approved',key=ap?[d.status,
  $('cPrevNote').style.display=ap&&d.changed?'block':'none';
  if(key===cPvKey)return;cPvKey=key;
  if(!ap){$('cFrame').style.display='none';$('cPrevMsg').style.display='block';return}
- try{const sn=await getDoc(doc(db,'public',d.username));if(!sn.exists())throw 0;const h=pageHTML(sn.data(),safe(d.publishedUrl)||'');if(cPvUrl)URL.revokeObjectURL(cPvUrl);cPvUrl=URL.createObjectURL(new Blob([h],{type:'text/html;charset=utf-8'}));$('cPv').src=cPvUrl;$('cFrame').style.display='block';$('cPrevMsg').style.display='none'}catch(e){cPvKey='';$('cFrame').style.display='none';$('cPrevMsg').style.display='block'}}
+ try{const sn=await getDoc(doc(db,'public',d.slug||d.username));if(!sn.exists())throw 0;const h=pageHTML(sn.data(),safe(d.publishedUrl)||'');if(cPvUrl)URL.revokeObjectURL(cPvUrl);cPvUrl=URL.createObjectURL(new Blob([h],{type:'text/html;charset=utf-8'}));$('cPv').src=cPvUrl;$('cFrame').style.display='block';$('cPrevMsg').style.display='none'}catch(e){cPvKey='';$('cFrame').style.display='none';$('cPrevMsg').style.display='block'}}
 
 route();
 </script>

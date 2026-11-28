@@ -23,7 +23,7 @@
 <div class="studio"><div class="list" id="sList"></div>
 <div class="card"><div id="sEmpty" style="text-align:center;color:var(--muted);padding:30px 8px">اختر نشاطاً من القائمة للمعاينة والاعتماد.</div>
 <div id="sEd" style="display:none"><div class="row" style="justify-content:space-between;margin-bottom:10px"><h3 id="eT" style="margin:0"></h3><span class="pill pw" id="eB"></span></div>
-<label class="f"><span>رابط الصفحة</span><input id="eUrl" dir="ltr"></label><label class="f"><span>ملاحظة للعميل</span><input id="eNote"></label>
+<label class="f"><span>معرّف الصفحة في الرابط (حروف إنجليزية وأرقام، مثال: clothes)</span><input id="eSlug" dir="ltr"></label><label class="f"><span>رابط الصفحة</span><input id="eUrl" dir="ltr"></label><label class="f"><span>ملاحظة للعميل</span><input id="eNote"></label>
 <div class="row" style="margin-bottom:14px"><button class="btn okb sm" data-act="approve">اعتماد ونشر</button><button class="btn ghost sm" data-act="unpub">إلغاء النشر</button><button class="btn sec sm" data-act="expHtml">تصدير HTML</button><button class="btn sec sm" data-act="expQr">تصدير QR</button><button class="btn sec sm" data-act="openPv">فتح المعاينة</button><button class="btn main sm" data-act="saveDz">حفظ التصميم</button></div>
 <div class="edg"><div id="dzBox"></div><div class="edp"><div class="frame"><iframe class="pv" id="pv" title="معاينة" sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox" allow="clipboard-write"></iframe></div></div></div></div></div></div></div>
 </div></section>
@@ -53,7 +53,10 @@ document.addEventListener('click',e=>{const a=e.target.closest('[data-act]');if(
  }[a.dataset.act]||(()=>{}))()});
 /* ---------- الاستوديو ---------- */
 const cur=()=>recs.find(r=>r.id===sel);
-const eUrl=r=>($('eUrl').value.trim())||BASE+'?c='+encodeURIComponent(r.username);
+const validId=v=>/^[a-z0-9][a-z0-9_.-]{1,59}$/.test(v)&&!/^__.*__$/.test(v);
+const defSlug=r=>r.slug||(validId(r.username)?r.username:'');
+const pidOf=r=>slugOf($('eSlug').value)||defSlug(r)||r.username;
+const eUrl=r=>($('eUrl').value.trim())||BASE+'?c='+encodeURIComponent(pidOf(r));
 function badge(r){return r.status==='approved'?(r.changed?['تعديل جديد','pw']:['معتمد','po']):['قيد المراجعة','pw']}
 function renderStudio(){
  const on=session.role==='admin';$('sAuth').style.display=on?'none':'block';$('sBoard').style.display=on?'block':'none';$('sOut').style.display=on?'inline-flex':'none';if(!on)return;
@@ -66,7 +69,7 @@ $('sQ').addEventListener('input',renderStudio);$('sF').addEventListener('change'
 $('sList').addEventListener('click',e=>{const it=e.target.closest('.it');if(!it)return;sel=it.dataset.id;fillEd(true);renderStudio()});
 function fillEd(reset){const r=cur();if(!r)return;$('sEmpty').style.display='none';$('sEd').style.display='block';$('eT').textContent=r.n||r.username;
  const b=badge(r),bb=$('eB');bb.textContent=b[0];bb.className='pill '+b[1];
- if(reset){$('eUrl').value=r.publishedUrl||BASE+'?c='+encodeURIComponent(r.username);$('eNote').value=r.adminNote||''}
+ if(reset){$('eSlug').value=defSlug(r);$('eUrl').value=r.publishedUrl||(defSlug(r)?BASE+'?c='+encodeURIComponent(defSlug(r)):'');$('eNote').value=r.adminNote||''}
  if(reset||dzId!==r.id){dzLoad(r);dzRender()}
  prevSet(r)}
 let pvUrl=null;
@@ -74,10 +77,12 @@ function prevSet(r){let h;try{h=pageHTML(curD(r),eUrl(r))}catch(e){h='<p dir="rt
  try{if(pvUrl)URL.revokeObjectURL(pvUrl);pvUrl=URL.createObjectURL(new Blob([h],{type:'text/html;charset=utf-8'}));$('pv').removeAttribute('srcdoc');$('pv').src=pvUrl}catch(e){$('pv').srcdoc=h}}
 $('eUrl').addEventListener('change',()=>{const r=cur();if(r)prevSet(r)});
 $('sForm').addEventListener('submit',async e=>{e.preventDefault();try{await signInWithEmailAndPassword(auth,$('sMail').value.trim(),$('sPass').value)}catch(err){toast(errMsg(err.code))}});
-async function approve(){const r=cur();if(!r)return;const url=safe(eUrl(r));if(!url){toast('الرابط غير صالح');return}
+async function approve(){const r=cur();if(!r)return;const pid=slugOf($('eSlug').value);if(!validId(pid)){toast('اكتب معرّف الصفحة بحروف إنجليزية وأرقام (مثال: clothes)');return}
+ let u=$('eUrl').value.trim();if(!u||u.indexOf(BASE+'?c=')===0)u=BASE+'?c='+encodeURIComponent(pid);$('eUrl').value=u;
+ const url=safe(u);if(!url){toast('الرابط غير صالح');return}
  const pub={};KEYS.concat(IMGK).forEach(k=>pub[k]=r[k]==null?(k==='cod'?false:''):r[k]);pub.design=JSON.parse(JSON.stringify(normDesign((dzId===r.id&&dz)?dz:r.design)));pub.updatedAt=new Date().toISOString();
- try{await setDoc(doc(db,'public',r.username),pub);await updateDoc(doc(db,'businesses',r.id),{status:'approved',publishedUrl:url,adminNote:$('eNote').value.trim(),changed:false,design:pub.design});toast('تم الاعتماد والنشر')}catch(err){toast('تعذر الاعتماد: راجع قواعد Firestore')}}
-async function unpub(){const r=cur();if(!r)return;try{await deleteDoc(doc(db,'public',r.username));await updateDoc(doc(db,'businesses',r.id),{status:'pending',adminNote:$('eNote').value.trim(),changed:false});toast('تم إلغاء النشر')}catch(err){toast('تعذر التنفيذ')}}
+ try{await setDoc(doc(db,'public',pid),pub);await updateDoc(doc(db,'businesses',r.id),{status:'approved',publishedUrl:url,slug:pid,adminNote:$('eNote').value.trim(),changed:false,design:pub.design});toast('تم الاعتماد والنشر')}catch(err){toast('تعذر الاعتماد: '+(err.code||err.message||'خطأ'))}}
+async function unpub(){const r=cur();if(!r)return;try{await deleteDoc(doc(db,'public',r.slug||r.username));await updateDoc(doc(db,'businesses',r.id),{status:'pending',adminNote:$('eNote').value.trim(),changed:false});toast('تم إلغاء النشر')}catch(err){toast('تعذر التنفيذ')}}
 function expHtml(){const r=cur();if(r)dl(new Blob([pageHTML(curD(r),eUrl(r))],{type:'text/html;charset=utf-8'}),(r.username||'page')+'.html')}
 /* ---------- محرر التصميم (الأدمن) ---------- */
 let dz=null,dzId=null;
