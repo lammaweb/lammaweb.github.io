@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<title>Lamma | لوحة الإدارة</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%238b63d0'/%3E%3Crect x='10' y='10' width='18' height='18' rx='4' fill='%23fff'/%3E%3Crect x='36' y='10' width='18' height='18' rx='4' fill='%23fff'/%3E%3Crect x='10' y='36' width='18' height='18' rx='4' fill='%23fff'/%3E%3Crect x='38' y='38' width='6' height='6' fill='%23fff'/%3E%3Crect x='48' y='48' width='6' height='6' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@500;700;900&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<link rel="stylesheet" href="style.css?v=1">
+</head>
+<body>
+<div class="bar"><div class="w nav"><div class="logo" id="logo"><i>▦</i>Lamma <span class="pill pw" style="font-size:12px;margin-inline-start:6px">الإدارة</span></div></div></div>
+
+<section id="vStudio" class="view on"><div class="w">
+<div class="row" style="justify-content:space-between;margin-bottom:16px"><h2 style="margin:0;font-size:24px;font-weight:900">الاستوديو</h2>
+<div class="row"><span class="pill pw" id="qBadge">قيد المراجعة: 0</span><button class="btn ghost sm" id="sOut" style="display:none" data-act="logout">خروج</button></div></div>
+<div class="card auth" id="sAuth"><form id="sForm"><label class="f"><span>البريد الإلكتروني</span><input id="sMail" type="email" dir="ltr" required autocomplete="username"></label>
+<label class="f"><span>كلمة المرور</span><input id="sPass" type="password" required autocomplete="current-password"></label><button class="btn main full" type="submit">دخول</button></form></div>
+<div id="sBoard" style="display:none"><div class="card"><div class="row"><input id="sQ" placeholder="بحث بالاسم أو الرقم" style="flex:1;min-width:180px;padding:10px;border:1.5px solid var(--line);border-radius:12px"><select id="sF" style="padding:10px;border:1.5px solid var(--line);border-radius:12px"><option value="all">الكل</option><option value="pending">قيد المراجعة</option><option value="approved">معتمد</option></select></div></div>
+<div class="studio"><div class="list" id="sList"></div>
+<div class="card"><div id="sEmpty" style="text-align:center;color:var(--muted);padding:30px 8px">اختر نشاطاً من القائمة للمعاينة والاعتماد.</div>
+<div id="sEd" style="display:none"><div class="row" style="justify-content:space-between;margin-bottom:10px"><h3 id="eT" style="margin:0"></h3><span class="pill pw" id="eB"></span></div>
+<label class="f"><span>رابط الصفحة</span><input id="eUrl" dir="ltr"></label><label class="f"><span>ملاحظة للعميل</span><input id="eNote"></label>
+<div class="row" style="margin-bottom:14px"><button class="btn okb sm" data-act="approve">اعتماد ونشر</button><button class="btn ghost sm" data-act="unpub">إلغاء النشر</button><button class="btn sec sm" data-act="expHtml">تصدير HTML</button><button class="btn sec sm" data-act="expQr">تصدير QR</button><button class="btn sec sm" data-act="openPv">فتح المعاينة</button><button class="btn main sm" data-act="saveDz">حفظ التصميم</button></div>
+<div class="edg"><div id="dzBox"></div><div class="edp"><div class="frame"><iframe class="pv" id="pv" title="معاينة" sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox" allow="clipboard-write"></iframe></div></div></div></div></div></div></div>
+</div></section>
+
+
+<footer>Lamma © 2027</footer>
+<div class="toast" id="toast" role="status"></div>
+
+<script type="module">
+import {signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,onAuthStateChanged,collection,doc,setDoc,getDoc,updateDoc,deleteDoc,onSnapshot,CONTACT_WA,DOMAIN,auth,db,$,esc,slugOf,KEYS,LAYS,IMGK,DATAIMG,mini,toast,errMsg,digits,intl,safe,lk,SZ,IC,PRESET,icoH,defDesign,normDesign,resolveItem,btn,grid,pageHTML,drawQr,qrPng,dl} from './shared.js?v=1';
+const BASE=location.origin+location.pathname.replace(/[^/]*$/,'');
+let session={role:null,user:null},recs=[],sel=null,first=true,unsubAll=null;
+function chime(){try{const C=window.AudioContext||window.webkitAudioContext,x=new C(),o=x.createOscillator(),g=x.createGain();o.frequency.setValueAtTime(760,x.currentTime);o.frequency.setValueAtTime(980,x.currentTime+.11);g.gain.setValueAtTime(.07,x.currentTime);g.gain.exponentialRampToValueAtTime(.001,x.currentTime+.32);o.connect(g);g.connect(x.destination);o.start();o.stop(x.currentTime+.34)}catch(e){}}
+onAuthStateChanged(auth,async user=>{
+ if(unsubAll){unsubAll();unsubAll=null}
+ session={role:null,user};recs=[];first=true;
+ if(user){let ok=false;try{ok=(await getDoc(doc(db,'admins',user.uid))).exists()}catch(e){}
+  if(ok){session.role='admin';
+   unsubAll=onSnapshot(collection(db,'businesses'),snap=>{recs=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>String(b.updatedAt||'').localeCompare(String(a.updatedAt||'')));
+    if(!first&&snap.docChanges().length){chime();toast('تم تحديث قائمة الطلبات')}first=false;renderStudio()})}
+  else toast('هذا الحساب ليس أدمن')}
+ renderStudio()});
+$('sOut').onclick=()=>signOut(auth);
+document.addEventListener('click',e=>{const a=e.target.closest('[data-act]');if(!a)return;({
+ logout:()=>signOut(auth),
+ openPv:()=>{if(pvUrl)window.open(pvUrl,'_blank')},approve:approve,unpub:unpub,expHtml:expHtml,saveDz:saveDz,expQr:()=>{const r=cur();if(r)qrPng(eUrl(r),r.n,r.color,'qr-'+r.username+'.png')}
+ }[a.dataset.act]||(()=>{}))()});
+/* ---------- الاستوديو ---------- */
+const cur=()=>recs.find(r=>r.id===sel);
+const eUrl=r=>($('eUrl').value.trim())||BASE+'?c='+encodeURIComponent(r.username);
+function badge(r){return r.status==='approved'?(r.changed?['تعديل جديد','pw']:['معتمد','po']):['قيد المراجعة','pw']}
+function renderStudio(){
+ const on=session.role==='admin';$('sAuth').style.display=on?'none':'block';$('sBoard').style.display=on?'block':'none';$('sOut').style.display=on?'inline-flex':'none';if(!on)return;
+ const n=recs.filter(r=>r.status!=='approved'||r.changed).length,qb=$('qBadge');qb.textContent='بانتظار المراجعة: '+n;qb.className='pill '+(n?'pw':'po');
+ const q=$('sQ').value.trim().toLowerCase(),f=$('sF').value;
+ const list=recs.filter(r=>(f==='all'||(r.status||'pending')===f)&&(!q||((r.n||'')+' '+(r.username||'')+' '+(r.ph||'')).toLowerCase().includes(q)));
+ $('sList').innerHTML=list.length?list.map(r=>{const b=badge(r);return '<div class="it'+(r.id===sel?' on':'')+'" data-id="'+esc(r.id)+'"><div class="row" style="justify-content:space-between"><b>'+esc(r.n||r.username)+'</b><span class="pill '+b[1]+'">'+b[0]+'</span></div><div style="font-size:12.5px;color:var(--muted)">@'+esc(r.username)+(r.ph?' · '+esc(r.ph):'')+'</div></div>'}).join(''):'<div class="card" style="text-align:center;color:var(--muted)">لا توجد عناصر.</div>';
+ if(sel&&cur())fillEd(false);else{sel=null;$('sEd').style.display='none';$('sEmpty').style.display='block'}}
+$('sQ').addEventListener('input',renderStudio);$('sF').addEventListener('change',renderStudio);
+$('sList').addEventListener('click',e=>{const it=e.target.closest('.it');if(!it)return;sel=it.dataset.id;fillEd(true);renderStudio()});
+function fillEd(reset){const r=cur();if(!r)return;$('sEmpty').style.display='none';$('sEd').style.display='block';$('eT').textContent=r.n||r.username;
+ const b=badge(r),bb=$('eB');bb.textContent=b[0];bb.className='pill '+b[1];
+ if(reset){$('eUrl').value=r.publishedUrl||BASE+'?c='+encodeURIComponent(r.username);$('eNote').value=r.adminNote||''}
+ if(reset||dzId!==r.id){dzLoad(r);dzRender()}
+ prevSet(r)}
+let pvUrl=null;
+function prevSet(r){let h;try{h=pageHTML(curD(r),eUrl(r))}catch(e){h='<p dir="rtl" style="font-family:sans-serif;padding:20px">تعذر عرض المعاينة: '+esc(e.message)+'</p>'}
+ try{if(pvUrl)URL.revokeObjectURL(pvUrl);pvUrl=URL.createObjectURL(new Blob([h],{type:'text/html;charset=utf-8'}));$('pv').removeAttribute('srcdoc');$('pv').src=pvUrl}catch(e){$('pv').srcdoc=h}}
+$('eUrl').addEventListener('change',()=>{const r=cur();if(r)prevSet(r)});
+$('sForm').addEventListener('submit',async e=>{e.preventDefault();try{await signInWithEmailAndPassword(auth,$('sMail').value.trim(),$('sPass').value)}catch(err){toast(errMsg(err.code))}});
+async function approve(){const r=cur();if(!r)return;const url=safe(eUrl(r));if(!url){toast('الرابط غير صالح');return}
+ const pub={};KEYS.concat(IMGK).forEach(k=>pub[k]=r[k]==null?(k==='cod'?false:''):r[k]);pub.design=JSON.parse(JSON.stringify(normDesign((dzId===r.id&&dz)?dz:r.design)));pub.updatedAt=new Date().toISOString();
+ try{await setDoc(doc(db,'public',r.username),pub);await updateDoc(doc(db,'businesses',r.id),{status:'approved',publishedUrl:url,adminNote:$('eNote').value.trim(),changed:false,design:pub.design});toast('تم الاعتماد والنشر')}catch(err){toast('تعذر الاعتماد: راجع قواعد Firestore')}}
+async function unpub(){const r=cur();if(!r)return;try{await deleteDoc(doc(db,'public',r.username));await updateDoc(doc(db,'businesses',r.id),{status:'pending',adminNote:$('eNote').value.trim(),changed:false});toast('تم إلغاء النشر')}catch(err){toast('تعذر التنفيذ')}}
+function expHtml(){const r=cur();if(r)dl(new Blob([pageHTML(curD(r),eUrl(r))],{type:'text/html;charset=utf-8'}),(r.username||'page')+'.html')}
+/* ---------- محرر التصميم (الأدمن) ---------- */
+let dz=null,dzId=null;
+const DZ_TY=[['tel','اتصال'],['wa','واتساب'],['url','رابط'],['copy','نسخ رقم/نص'],['pay','دفع (رابط أو نسخ)'],['mail','بريد'],['qr','QR'],['static','نص ثابت']];
+const DZ_SZ=[['','افتراضي'],['s','صغير'],['m','وسط'],['l','كبير']];
+function dzLoad(r){dz=JSON.parse(JSON.stringify(normDesign(r.design)));dzId=r.id}
+function curD(r){return Object.assign({},r,{design:(dzId===r.id&&dz)?dz:r.design})}
+function dzRender(){if(!dz)return;
+ const op=(arr,v)=>arr.map(a=>'<option value="'+a[0]+'"'+(a[0]===v?' selected':'')+'>'+a[1]+'</option>').join(''),icOp=Object.keys(IC).map(k=>[k,IC[k].n]),secOp=dz.secs.map((x,i)=>'<option value="'+i+'">'+esc(x.t||('قسم '+(i+1)))+'</option>').join('');
+ let h='<div class="dsec"><b>إعدادات عامة</b><div class="dr"><label class="mf"><span>الحركة</span><select data-g="anim">'+op([['none','بدون حركة'],['soft','تفاعل خفيف'],['lively','حركة أكتر']],dz.anim)+'</select></label><label class="mf"><span>حجم الأيقونات</span><select data-g="sz">'+op(DZ_SZ.slice(1),dz.sz)+'</select></label><label class="mf"><span>شكل الأيقونة</span><select data-g="shape" data-re="1">'+op([['sq','مربع دايري'],['ci','دايرة']],dz.shape)+'</select></label><label class="mf"><span>قسم التقييم</span><select data-g="rate">'+op([['1','ظاهر'],['0','مخفي']],dz.rate?'1':'0')+'</select></label></div></div>';
+ dz.secs.forEach((x,si)=>{
+  h+='<div class="dsec"><div class="dr"><label class="mf" style="flex:2"><span>عنوان القسم</span><input data-s="'+si+'" data-f="t" value="'+esc(x.t)+'"></label><button type="button" class="btn ghost sm" data-do="sup" data-s="'+si+'">▲</button><button type="button" class="btn ghost sm" data-do="sdn" data-s="'+si+'">▼</button><button type="button" class="btn ghost sm" data-do="sdel" data-s="'+si+'">🗑</button></div>'
+  +'<div class="lays">'+LAYS.map((l,li)=>'<button type="button" class="lay'+(x.lay===li+1?' on':'')+'" title="'+l[0]+'" data-do="lay" data-s="'+si+'" data-v="'+(li+1)+'"><div class="mn">'+mini(li)+'</div></button>').join('')+'</div>';
+  x.items.forEach((it,ii)=>{const a=' data-s="'+si+'" data-i="'+ii+'"',bgv=/^#[0-9a-f]{6}$/i.test(it.bg||'')?it.bg:'';
+   h+='<div class="dit"><div class="dr"><span>'+icoH(IC[it.ic]?it.ic:'link',bgv,'s',dz.shape)+'</span><label class="mf"><span>الأيقونة</span><select'+a+' data-f="ic" data-re="1">'+op(icOp,it.ic)+'</select></label><label class="mf"><span>الاسم</span><input'+a+' data-f="t" value="'+esc(it.t)+'"></label></div>'
+   +'<div class="dr"><label class="mf"><span>سطر صغير (اختياري)</span><input'+a+' data-f="s" value="'+esc(it.s)+'"></label><label class="mf"><span>الرابط / الرقم (فاضي = من بيانات العميل)</span><input dir="ltr"'+a+' data-f="v" value="'+esc(it.v)+'"></label></div>'
+   +'<div class="dr"><label class="mf"><span>النوع</span><select'+a+' data-f="ty" data-re="1">'+op(DZ_TY,it.ty)+'</select></label><label class="mf"><span>الحجم</span><select'+a+' data-f="sz">'+op(DZ_SZ,it.sz||'')+'</select></label><label class="mf"><span>اللون</span><input type="color"'+a+' data-f="bg" value="'+(bgv||'#888888')+'"></label><button type="button" class="btn ghost sm"'+a+' data-do="bgreset" title="لون الأيقونة الأصلي">↺</button></div>'
+   +'<div class="dr"><button type="button" class="btn ghost sm"'+a+' data-do="iup">▲</button><button type="button" class="btn ghost sm"'+a+' data-do="idn">▼</button><label class="mf"><span>نقل لقسم</span><select'+a+' data-f="mv"><option value="">—</option>'+secOp+'</select></label><button type="button" class="btn ghost sm"'+a+' data-do="idel">🗑 حذف</button></div></div>'});
+  h+='<div class="dr" style="margin-top:8px"><label class="mf" style="flex:2"><span>إضافة زرار</span><select id="add_'+si+'">'+op(icOp,'link')+'</select></label><button type="button" class="btn sec sm" data-do="iadd" data-s="'+si+'">+ إضافة</button></div></div>'});
+ h+='<div class="row" style="margin-bottom:12px"><button type="button" class="btn sec sm" data-do="sadd">+ قسم جديد</button><button type="button" class="btn ghost sm" data-do="dreset">رجوع للتصميم الافتراضي</button></div>';
+ $('dzBox').innerHTML=h}
+function dzPrev(){clearTimeout(dzPrev.t);dzPrev.t=setTimeout(()=>{const r=cur();if(r)prevSet(r)},250)}
+function dzField(el){if(!dz)return false;
+ if(el.dataset.g){const g=el.dataset.g;dz[g]=g==='rate'?(el.value==='1'?1:0):el.value;return true}
+ const si=+el.dataset.s,f=el.dataset.f,sc=dz.secs[si];if(!sc)return false;
+ if(el.dataset.i==null){if(f==='t')sc.t=el.value;return true}
+ const ii=+el.dataset.i,it=sc.items[ii];if(!it)return false;
+ if(f==='mv'){if(el.value==='')return false;const to=+el.value;if(to!==si&&dz.secs[to]){sc.items.splice(ii,1);dz.secs[to].items.push(it);dzRender()}return true}
+ it[f]=el.value;return true}
+$('dzBox').addEventListener('input',e=>{if(e.target.matches('input')&&dzField(e.target))dzPrev()});
+$('dzBox').addEventListener('change',e=>{const t=e.target;if(!t.matches('select'))return;if(dzField(t)){if(t.dataset.re)dzRender();dzPrev()}});
+$('dzBox').addEventListener('click',e=>{const b=e.target.closest('[data-do]');if(!b||!dz)return;
+ const si=+b.dataset.s,ii=+b.dataset.i,d=b.dataset.do,S=dz.secs,mv=(a,i,j)=>{if(j>=0&&j<a.length){const t=a[i];a[i]=a[j];a[j]=t}};
+ if(d==='sup')mv(S,si,si-1);else if(d==='sdn')mv(S,si,si+1);
+ else if(d==='sdel'){if(!confirm('حذف القسم بكل أزراره؟'))return;S.splice(si,1)}
+ else if(d==='lay')S[si].lay=+b.dataset.v;
+ else if(d==='iup')mv(S[si].items,ii,ii-1);else if(d==='idn')mv(S[si].items,ii,ii+1);else if(d==='idel')S[si].items.splice(ii,1);
+ else if(d==='bgreset')S[si].items[ii].bg='';
+ else if(d==='iadd'){const k=$('add_'+si).value,p=PRESET[k]||{};S[si].items.push({id:'i'+Date.now().toString(36),src:'',ty:p.ty||'url',ic:k,t:IC[k].n,s:'',v:'',sz:'',bg:''})}
+ else if(d==='sadd')S.push({id:'s'+Date.now().toString(36),t:'قسم جديد',lay:2,items:[]});
+ else if(d==='dreset'){if(!confirm('الرجوع للتصميم الافتراضي؟'))return;dz=defDesign()}
+ else return;
+ dzRender();dzPrev()});
+async function saveDz(){const r=cur();if(!r||!dz)return;try{await updateDoc(doc(db,'businesses',r.id),{design:JSON.parse(JSON.stringify(dz))});toast('تم حفظ التصميم')}catch(e){toast('تعذر حفظ التصميم')}}
+</script>
+</body>
+</html>
